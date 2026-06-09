@@ -1,6 +1,18 @@
-# Example Argo CD RBAC (OpenShift GitOps)
-#
-# Apply after AppProjects. Adjust group names to match your IdP.
+# Argo CD RBAC (OpenShift GitOps)
+
+## Application controller cluster permissions
+
+OpenShift GitOps ships a restricted ClusterRole for the application controller.
+RHOAI platform charts need broader create/update permissions (ServiceAccounts,
+Deployments, Gateways, etc.). Apply once per cluster **before** bootstrapping:
+
+```bash
+oc apply -f argocd/rbac/gitops-application-controller-clusteradmin.yaml
+```
+
+## Example Argo CD user/group RBAC
+
+Apply after AppProjects. Adjust group names to match your IdP.
 #
 # Platform engineers — full access to rhoai-platform project:
 #

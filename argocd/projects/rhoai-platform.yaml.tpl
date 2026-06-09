@@ -13,6 +13,16 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: openshift-operators
       server: https://kubernetes.default.svc
+    - namespace: openshift-config-managed
+      server: https://kubernetes.default.svc
+    - namespace: openshift-monitoring
+      server: https://kubernetes.default.svc
+    - namespace: openshift-cluster-observability-operator
+      server: https://kubernetes.default.svc
+    - namespace: openshift-opentelemetry-operator
+      server: https://kubernetes.default.svc
+    - namespace: openshift-tempo-operator
+      server: https://kubernetes.default.svc
     - namespace: openshift-nfd
       server: https://kubernetes.default.svc
     - namespace: nvidia-gpu-operator

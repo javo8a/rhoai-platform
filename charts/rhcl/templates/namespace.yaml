@@ -1,4 +1,5 @@
-{{- if .Values.kuadrant.create }}
+{{- $installRhcl := index .Values "install-rhcl" }}
+{{- if and .Values.kuadrant.create (not $installRhcl.enabled) }}
 apiVersion: v1
 kind: Namespace
 metadata:

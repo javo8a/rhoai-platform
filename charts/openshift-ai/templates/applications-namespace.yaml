@@ -1,0 +1,9 @@
+{{- if .Values.dataScienceCluster.create }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.dataScienceClusterInitialization.applicationsNamespace | default "redhat-ods-applications" }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+{{- end }}

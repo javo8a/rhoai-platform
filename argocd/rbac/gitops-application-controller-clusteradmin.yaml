@@ -1,0 +1,19 @@
+# Grant the OpenShift GitOps application controller cluster-admin so it can
+# sync platform charts (operators, gateways, workloads in system namespaces).
+# Apply once per cluster before bootstrapping rhoai-platform Applications:
+#   oc apply -f argocd/rbac/gitops-application-controller-clusteradmin.yaml
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: openshift-gitops-argocd-application-controller-cluster-admin
+  labels:
+    app.kubernetes.io/part-of: rhoai-platform
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: openshift-gitops-argocd-application-controller
+    namespace: openshift-gitops
