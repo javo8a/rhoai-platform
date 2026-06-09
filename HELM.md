@@ -309,7 +309,7 @@ helm template test charts/gateway-api \
 Update chart dependencies after cloning:
 
 ```bash
-for c in rhcl leaderworkerset openshift-ai observability-operators; do
+for c in cert-manager nvidia-gpu-enablement rhcl leaderworkerset openshift-ai observability-operators; do
   (cd charts/$c && helm dependency update)
 done
 ```
