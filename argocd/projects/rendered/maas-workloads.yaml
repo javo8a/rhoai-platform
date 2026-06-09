@@ -7,7 +7,6 @@ metadata:
 spec:
   description: Application team — MaaS models and subscriptions (waves 7–8)
   sourceRepos:
-    - https://github.com/javo8a/rhoai-platform.git
     - https://github.com/javo8a/rhoai-workloads.git
   destinations:
     - namespace: ai-models

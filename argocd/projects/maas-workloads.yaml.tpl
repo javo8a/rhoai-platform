@@ -7,7 +7,6 @@ metadata:
 spec:
   description: Application team — MaaS models and subscriptions (waves 7–8)
   sourceRepos:
-    - ${ARGO_GIT_URL}
     - ${ARGO_WORKLOADS_GIT_URL}
   destinations:
     - namespace: ai-models

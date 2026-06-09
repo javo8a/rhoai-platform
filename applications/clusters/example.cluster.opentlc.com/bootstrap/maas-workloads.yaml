@@ -14,7 +14,7 @@ spec:
     namespace: openshift-gitops
   source:
     path: applications/clusters/example.cluster.opentlc.com/workloads
-    repoURL: https://github.com/javo8a/rhoai-platform.git
+    repoURL: https://github.com/javo8a/rhoai-workloads.git
     targetRevision: main
     directory:
       recurse: false

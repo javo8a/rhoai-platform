@@ -14,8 +14,8 @@ spec:
     namespace: ${ARGOCD_NAMESPACE}
   source:
     path: applications/clusters/${ARGO_CLUSTER_DIR}/workloads
-    repoURL: ${ARGO_GIT_URL}
-    targetRevision: ${ARGO_GIT_REVISION}
+    repoURL: ${ARGO_WORKLOADS_GIT_URL}
+    targetRevision: ${ARGO_WORKLOADS_GIT_REVISION}
     directory:
       recurse: false
   syncPolicy:

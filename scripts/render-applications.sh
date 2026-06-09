@@ -12,9 +12,11 @@
 #
 # Outputs:
 #   applications/clusters/{cluster}/platform/
-#   applications/clusters/{cluster}/workloads/
 #   applications/clusters/{cluster}/bootstrap/
 #   argocd/projects/rendered/
+#
+# Workload Application manifests are rendered in the workloads repo:
+#   rhoai-workloads/scripts/render-applications.sh
 
 set -euo pipefail
 
@@ -70,20 +72,14 @@ render_template() {
 }
 
 PLATFORM_OUT="${HELM_ROOT}/applications/clusters/${ARGO_CLUSTER_DIR}/platform"
-WORKLOADS_OUT="${HELM_ROOT}/applications/clusters/${ARGO_CLUSTER_DIR}/workloads"
 BOOTSTRAP_OUT="${HELM_ROOT}/applications/clusters/${ARGO_CLUSTER_DIR}/bootstrap"
 PROJECTS_OUT="${HELM_ROOT}/argocd/projects/rendered"
 
-mkdir -p "${PLATFORM_OUT}" "${WORKLOADS_OUT}" "${BOOTSTRAP_OUT}" "${PROJECTS_OUT}"
+mkdir -p "${PLATFORM_OUT}" "${BOOTSTRAP_OUT}" "${PROJECTS_OUT}"
 
 for tpl in "${HELM_ROOT}"/applications-templates/platform/*.yaml.tpl; do
   base="$(basename "${tpl}" .tpl)"
   render_template "${tpl}" "${PLATFORM_OUT}/${base}"
-done
-
-for tpl in "${HELM_ROOT}"/applications-templates/workloads/*.yaml.tpl; do
-  base="$(basename "${tpl}" .tpl)"
-  render_template "${tpl}" "${WORKLOADS_OUT}/${base}"
 done
 
 render_template "${HELM_ROOT}/app-of-apps/rhoai-platform.yaml.tpl" \
@@ -101,8 +97,13 @@ render_template "${HELM_ROOT}/app-of-apps/rhoai-maas-bootstrap.yaml.tpl" \
 
 echo "Rendered Applications for cluster: ${ARGO_CLUSTER_DIR}"
 echo "  Platform child apps:  ${PLATFORM_OUT}/"
-echo "  Workload child apps:  ${WORKLOADS_OUT}/"
 echo "  Bootstrap apps:       ${BOOTSTRAP_OUT}/"
+echo
+echo "Render workload Applications in rhoai-workloads:"
+echo "  ../rhoai-workloads/scripts/render-applications.sh \\"
+echo "    --cluster ${ARGO_CLUSTER_DIR} \\"
+echo "    --workloads-repo ${ARGO_WORKLOADS_GIT_URL} \\"
+echo "    --workloads-revision ${ARGO_WORKLOADS_GIT_REVISION}"
 echo "  AppProjects:          ${PROJECTS_OUT}/"
 echo "  Bootstrap root app:   applications/clusters/${ARGO_CLUSTER_DIR}/rhoai-maas-bootstrap.yaml"
 echo

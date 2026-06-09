@@ -13,12 +13,9 @@ rhoai-platform/
 │   └── example.cluster.opentlc.com/
 │       ├── cluster.yaml            # Global cluster name/domain/toolsImage
 │       └── platform/values/{app}/  # Platform chart overrides
-├── applications-templates/
-│   ├── platform/                   # Child Application templates (waves 1–6)
-│   └── workloads/                  # Multi-source child templates (waves 7–8)
+├── applications-templates/platform/  # Child Application templates (waves 1–6)
 ├── applications/clusters/{cluster}/  # Rendered Applications (generated)
 │   ├── platform/
-│   ├── workloads/
 │   ├── bootstrap/
 │   └── rhoai-maas-bootstrap.yaml
 ├── app-of-apps/                    # Root Application templates
@@ -32,27 +29,27 @@ rhoai-platform/
 | Owner | Argo CD root app | Sync waves | Charts |
 |-------|------------------|------------|--------|
 | **Platform engineers** | `rhoai-platform` | 1–6 | `cert-manager`, `observability-operators`, `nvidia-gpu-enablement`, `leaderworkerset`, `rhcl`, `gateway-api`, `openshift-ai`, `maas-postgres`, `maas-controller` |
-| **Application team** | `maas-workloads` | 7–8 | `llmisvc`, `maas-subscriptions` |
+| **Application team** | `maas-workloads` | 7–8 | `llmisvc`, `maas-subscriptions` (in workloads repo) |
 
 Platform delivers the MaaS **control plane** (operators, gateway, RHOAI, Postgres, Kuadrant policies). The application team delivers **workloads and catalog/access** (`LLMInferenceService`, `MaaSModelRef`, `MaaSAuthPolicy`, `MaaSSubscription`).
 
 ### Platform repo (this repo)
 
-- All charts under `charts/`
+- Platform charts under `charts/` (waves 1–6)
 - `clusters/{cluster}/cluster.yaml` and `clusters/{cluster}/platform/values/**`
-- Application templates, rendered `applications/`, AppProjects, bootstrap app
+- Platform Application templates, rendered `applications/`, AppProjects, bootstrap apps
 
 ### App-team repo ([rhoai-workloads](https://github.com/javo8a/rhoai-workloads))
 
 ```
 rhoai-workloads/
-└── clusters/{cluster}/
-    └── values/
-        ├── llmisvc/values.yaml
-        └── maas-subscriptions/values.yaml
+├── charts/llmisvc/
+├── charts/maas-subscriptions/
+├── clusters/{cluster}/values/
+└── applications/clusters/{cluster}/workloads/
 ```
 
-Workload charts use Argo CD **multi-source** Applications: chart path from the platform repo, values from the app-team repo via `$workloads/...` refs.
+Workload Applications are **single-source** from the workloads repo (charts + values). Platform bootstrap creates `maas-workloads` pointing at `applications/clusters/{cluster}/workloads/` in that repo.
 
 **Model name contract:** keys in `llmisvc` `models:` must match names in `maas-subscriptions` `modelRefs`, `subscriptions`, and `authPolicies`.
 
@@ -93,6 +90,8 @@ In [rhoai-workloads](https://github.com/javo8a/rhoai-workloads), add or edit:
 
 ### 3. Render Argo CD Applications
 
+Platform (this repo):
+
 ```bash
 ./scripts/render-applications.sh \
   --cluster mycluster.mydomain.com \
@@ -103,7 +102,17 @@ In [rhoai-workloads](https://github.com/javo8a/rhoai-workloads), add or edit:
   --argocd-namespace openshift-gitops
 ```
 
-Commit the rendered files under `applications/clusters/{cluster}/` and `argocd/projects/rendered/`.
+Workloads repo:
+
+```bash
+cd ../rhoai-workloads
+./scripts/render-applications.sh \
+  --cluster mycluster.mydomain.com \
+  --workloads-repo https://github.com/javo8a/rhoai-workloads.git \
+  --workloads-revision main
+```
+
+Commit platform rendered files under `applications/clusters/{cluster}/` and `argocd/projects/rendered/`. Commit workload rendered files in the workloads repo under `applications/clusters/{cluster}/workloads/`.
 
 ### 4. Bootstrap Argo CD (platform team)
 
@@ -172,8 +181,8 @@ Leave `disconnected.enabled: false` (default) on connected clusters such as Open
 
 ### Workload charts
 
-1. `charts/{app}/values.yaml` — chart defaults (platform repo)
-2. `clusters/{cluster}/values/{app}/values.yaml` — app-team overrides (workloads repo)
+1. `charts/{app}/values.yaml` — chart defaults (workloads repo)
+2. `clusters/{cluster}/values/{app}/values.yaml` — per-cluster overrides (workloads repo)
 
 ## Argo CD GitOps
 
@@ -182,7 +191,7 @@ Leave `disconnected.enabled: false` (default) on connected clusters such as Open
 | AppProject | Team | `sourceRepos` | Destinations |
 |------------|------|---------------|--------------|
 | `rhoai-platform` | Platform | Platform repo only | Operator and system namespaces |
-| `maas-workloads` | Application | Platform + workloads repos | `ai-models`, `models-as-a-service` |
+| `maas-workloads` | Application | Workloads repo only | `ai-models`, `models-as-a-service` |
 
 Grant platform engineers `project/rhoai-platform` permissions. Grant application teams `project/maas-workloads` only — they can sync workloads without modifying operators or gateway configuration.
 
@@ -202,22 +211,18 @@ spec:
         - ../../clusters/example.cluster.opentlc.com/platform/values/gateway-api/values.yaml
 ```
 
-### Workload child Application (multi-source)
+### Workload child Application (single-source, workloads repo)
 
 ```yaml
 spec:
   project: maas-workloads
-  sources:
-    - repoURL: https://github.com/javo8a/rhoai-platform.git
-      path: charts/llmisvc
-      helm:
-        valueFiles:
-          - $workloads/clusters/example.cluster.opentlc.com/values/llmisvc/values.yaml
-    - repoURL: https://github.com/javo8a/rhoai-workloads.git
-      ref: workloads
+  source:
+    repoURL: https://github.com/javo8a/rhoai-workloads.git
+    path: charts/llmisvc
+    helm:
+      valueFiles:
+        - ../../clusters/example.cluster.opentlc.com/values/llmisvc/values.yaml
 ```
-
-Requires Argo CD 2.6+ / OpenShift GitOps 1.8+ for multi-source Applications.
 
 ## Manual Helm Install (phased)
 
@@ -225,19 +230,21 @@ For clusters without Argo CD, install in wave order:
 
 ```bash
 CLUSTER=clusters/example.cluster.opentlc.com
-WORKLOADS=/path/to/rhoai-workloads/clusters/example.cluster.opentlc.com
-CHARTS=charts
+PLATFORM_CHARTS=charts
+WORKLOADS=/path/to/rhoai-workloads
+WORKLOAD_CHARTS=$WORKLOADS/charts
+CLUSTER_VALUES=$WORKLOADS/clusters/example.cluster.opentlc.com
 
 # Waves 1–6 (platform)
-helm upgrade --install cert-manager $CHARTS/cert-manager -n cert-manager-operator --create-namespace \
+helm upgrade --install cert-manager $PLATFORM_CHARTS/cert-manager -n cert-manager-operator --create-namespace \
   -f $CLUSTER/cluster.yaml -f $CLUSTER/platform/values/cert-manager/values.yaml
 # ... remaining platform charts ...
 
-# Waves 7–8 (workloads)
-helm upgrade --install llmisvc $CHARTS/llmisvc -n ai-models \
-  -f $WORKLOADS/values/llmisvc/values.yaml
-helm upgrade --install maas-subscriptions $CHARTS/maas-subscriptions -n models-as-a-service \
-  -f $WORKLOADS/values/maas-subscriptions/values.yaml
+# Waves 7–8 (workloads — from rhoai-workloads repo)
+helm upgrade --install llmisvc $WORKLOAD_CHARTS/llmisvc -n ai-models \
+  -f $CLUSTER_VALUES/values/llmisvc/values.yaml
+helm upgrade --install maas-subscriptions $WORKLOAD_CHARTS/maas-subscriptions -n models-as-a-service \
+  -f $CLUSTER_VALUES/values/maas-subscriptions/values.yaml
 ```
 
 ## Bootstrap.sh Parity
@@ -271,7 +278,8 @@ Post-install Jobs use the cluster `toolsImage` (must include `oc` and `jq`) and 
 
 | Chart | Source |
 |-------|--------|
-| `install-operators`, `cert-manager`, `nvidia-gpu-enablement`, `leaderworkerset`, `rhcl`, `gateway-api`, `openshift-ai`, `llmisvc`, `maas-subscriptions` | Adapted from [openshift-setup](https://github.com/jharmison-redhat/openshift-setup) |
+| `install-operators`, `cert-manager`, `nvidia-gpu-enablement`, `leaderworkerset`, `rhcl`, `gateway-api`, `openshift-ai` | Adapted from [openshift-setup](https://github.com/jharmison-redhat/openshift-setup) |
+| `llmisvc`, `maas-subscriptions` | In [rhoai-workloads](https://github.com/javo8a/rhoai-workloads) |
 | `maas-postgres`, `maas-controller`, `observability-operators` | Created from upstream Kustomize manifests |
 
 ## Validation
