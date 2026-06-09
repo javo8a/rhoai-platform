@@ -22,7 +22,10 @@ rbac:
 mcpServers: {}
 
 gateways:
+  # Gateway maas-default-gateway is owned by the gateway-api chart (sync wave 3).
+  # Set create: true only when openshift-ai should manage the Gateway instead.
   maasDefaultGateway:
+    create: false
     useRoute: false
     certificate:
       create: false
