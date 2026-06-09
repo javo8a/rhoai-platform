@@ -84,8 +84,6 @@ done
 
 render_template "${HELM_ROOT}/app-of-apps/rhoai-platform.yaml.tpl" \
   "${BOOTSTRAP_OUT}/rhoai-platform.yaml"
-render_template "${HELM_ROOT}/app-of-apps/maas-workloads.yaml.tpl" \
-  "${BOOTSTRAP_OUT}/maas-workloads.yaml"
 
 render_template "${HELM_ROOT}/argocd/projects/rhoai-platform.yaml.tpl" \
   "${PROJECTS_OUT}/rhoai-platform.yaml"
@@ -103,7 +101,10 @@ echo "Render workload Applications in rhoai-workloads:"
 echo "  ../rhoai-workloads/scripts/render-applications.sh \\"
 echo "    --cluster ${ARGO_CLUSTER_DIR} \\"
 echo "    --workloads-repo ${ARGO_WORKLOADS_GIT_URL} \\"
-echo "    --workloads-revision ${ARGO_WORKLOADS_GIT_REVISION}"
+echo "    --workloads-revision ${ARGO_WORKLOADS_GIT_REVISION} \\"
+echo "    --argocd-namespace ${ARGOCD_NAMESPACE}"
+echo
+echo "Then apply maas-workloads from the workloads repo after platform sync is healthy."
 echo "  AppProjects:          ${PROJECTS_OUT}/"
 echo "  Bootstrap root app:   applications/clusters/${ARGO_CLUSTER_DIR}/rhoai-maas-bootstrap.yaml"
 echo

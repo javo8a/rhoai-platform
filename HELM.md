@@ -46,10 +46,12 @@ rhoai-workloads/
 ├── charts/llmisvc/
 ├── charts/maas-subscriptions/
 ├── clusters/{cluster}/values/
-└── applications/clusters/{cluster}/workloads/
+└── applications/clusters/{cluster}/
+    ├── maas-workloads.yaml
+    └── workloads/
 ```
 
-Workload Applications are **single-source** from the workloads repo (charts + values). Platform bootstrap creates `maas-workloads` pointing at `applications/clusters/{cluster}/workloads/` in that repo.
+All workload Argo CD resources live in the workloads repo. Apply `maas-workloads.yaml` after platform sync is healthy.
 
 **Model name contract:** keys in `llmisvc` `models:` must match names in `maas-subscriptions` `modelRefs`, `subscriptions`, and `authPolicies`.
 
@@ -109,22 +111,30 @@ cd ../rhoai-workloads
 ./scripts/render-applications.sh \
   --cluster mycluster.mydomain.com \
   --workloads-repo https://github.com/javo8a/rhoai-workloads.git \
-  --workloads-revision main
+  --workloads-revision main \
+  --argocd-namespace openshift-gitops
 ```
 
-Commit platform rendered files under `applications/clusters/{cluster}/` and `argocd/projects/rendered/`. Commit workload rendered files in the workloads repo under `applications/clusters/{cluster}/workloads/`.
+Commit platform rendered files under `applications/clusters/{cluster}/` and `argocd/projects/rendered/`. Commit workload rendered files in the workloads repo under `applications/clusters/{cluster}/`.
 
 ### 4. Bootstrap Argo CD (platform team)
 
 1. Apply AppProjects from `argocd/projects/rendered/` to the GitOps namespace.
 2. Create the bootstrap Application from `applications/clusters/{cluster}/rhoai-maas-bootstrap.yaml`.
 
-The bootstrap app creates two child root Applications with sync-wave ordering:
+The bootstrap app creates `rhoai-platform` (platform child apps, waves 1–6).
 
-- `rhoai-platform` at wave **0** — platform child apps (waves 1–6)
-- `maas-workloads` at wave **10** — workload child apps (waves 7–8)
+### 5. Bootstrap workloads (app team)
 
-### 5. App-team onboarding
+After platform sync is healthy, apply the root workload Application from the workloads repo:
+
+```bash
+oc apply -f applications/clusters/mycluster.mydomain.com/maas-workloads.yaml -n openshift-gitops
+```
+
+This creates `maas-workloads`, which syncs `llmisvc` (wave 7) and `maas-subscriptions` (wave 8).
+
+### 6. App-team onboarding
 
 After platform sync is healthy (see checklist below), the application team:
 
