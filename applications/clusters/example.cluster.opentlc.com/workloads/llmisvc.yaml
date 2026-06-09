@@ -1,0 +1,28 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: llmisvc
+  annotations:
+    argocd.argoproj.io/sync-wave: "7"
+spec:
+  project: maas-workloads
+  destination:
+    name: in-cluster
+    namespace: ai-models
+  sources:
+    - repoURL: https://github.com/javo8a/rhoai-platform.git
+      targetRevision: main
+      path: charts/llmisvc
+      helm:
+        valueFiles:
+          - $workloads/clusters/example.cluster.opentlc.com/values/llmisvc/values.yaml
+    - repoURL: https://github.com/javo8a/rhoai-workloads.git
+      targetRevision: main
+      ref: workloads
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

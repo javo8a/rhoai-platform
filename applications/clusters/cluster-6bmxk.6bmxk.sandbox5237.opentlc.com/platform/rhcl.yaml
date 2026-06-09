@@ -1,0 +1,24 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rhcl
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: rhoai-platform
+  destination:
+    name: in-cluster
+    namespace: kuadrant-system
+  source:
+    path: charts/rhcl
+    repoURL: https://github.com/javo8a/rhoai-platform.git
+    targetRevision: main
+    helm:
+      valueFiles:
+        - ../../clusters/cluster-6bmxk.6bmxk.sandbox5237.opentlc.com/cluster.yaml
+        - ../../clusters/cluster-6bmxk.6bmxk.sandbox5237.opentlc.com/platform/values/rhcl/values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
