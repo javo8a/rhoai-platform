@@ -1,0 +1,28 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: openshift-ai
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  project: rhoai-platform
+  destination:
+    name: in-cluster
+    namespace: redhat-ods-operator
+  source:
+    path: charts/openshift-ai
+    repoURL: https://github.com/javo8a/rhoai-platform.git
+    targetRevision: main
+    helm:
+      valueFiles:
+        - ../../clusters/cluster-8h7g4.8h7g4.sandbox966.opentlc.com/cluster.yaml
+        - ../../clusters/cluster-8h7g4.8h7g4.sandbox966.opentlc.com/platform/values/openshift-ai/values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

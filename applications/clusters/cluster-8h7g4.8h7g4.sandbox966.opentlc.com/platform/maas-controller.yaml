@@ -1,0 +1,24 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: maas-controller
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+spec:
+  project: rhoai-platform
+  destination:
+    name: in-cluster
+    namespace: openshift-ingress
+  source:
+    path: charts/maas-controller
+    repoURL: https://github.com/javo8a/rhoai-platform.git
+    targetRevision: main
+    helm:
+      valueFiles:
+        - ../../clusters/cluster-8h7g4.8h7g4.sandbox966.opentlc.com/cluster.yaml
+        - ../../clusters/cluster-8h7g4.8h7g4.sandbox966.opentlc.com/platform/values/maas-controller/values.yaml
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
