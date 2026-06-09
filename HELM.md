@@ -66,7 +66,7 @@ All workload Argo CD resources live in the workloads repo. Apply `maas-workloads
 | 2 | `rhcl` | Platform | Red Hat Connectivity Link + Kuadrant |
 | 3 | `gateway-api` | Platform | GatewayClass + maas-default-gateway |
 | 4 | `openshift-ai` | Platform | RHOAI operator, DSC, dashboard, observability DSCI |
-| 5 | `maas-postgres` | Platform | Postgres for MaaS API key storage |
+| 5 | `maas-postgres` | Platform | Optional in-cluster Postgres + `maas-db-config` for MaaS API |
 | 6 | `maas-controller` | Platform | MaaS CRDs, RBAC, Kuadrant policies |
 | 7 | `llmisvc` | App team | LLMInferenceService models |
 | 8 | `maas-subscriptions` | App team | MaaSModelRef, MaaSAuthPolicy, MaaSSubscription |
@@ -149,7 +149,7 @@ Before relying on workload sync, confirm:
 - [ ] `maas-default-gateway` is programmed in `openshift-ingress`
 - [ ] DataScienceCluster and RHOAI dashboard are ready
 - [ ] `maas-controller` Kuadrant policies exist
-- [ ] Postgres is running and `maas-db-config` secret was created
+- [ ] `maas-db-config` secret exists (from in-cluster Postgres, external credentials, or day2 provisioning)
 - [ ] GPU nodes are labeled if deploying GPU models (`nvidia.com/gpu.present=true`)
 
 ## Value Layering
@@ -188,6 +188,42 @@ This enables:
 - **`gateway-api`**: creates `default-gateway-config` with `WASM_INSECURE_REGISTRIES` for the gateway istio-proxy
 
 Leave `disconnected.enabled: false` (default) on connected clusters such as OpenTLC sandboxes.
+
+### MaaS PostgreSQL (optional per cluster)
+
+MaaS API key storage requires a `maas-db-config` secret with `DB_CONNECTION_URL`. Configure this per cluster in `clusters/{cluster}/cluster.yaml`:
+
+```yaml
+maas:
+  postgres:
+    deploy:
+      enabled: true   # sandbox/POC: deploy in-cluster PostgreSQL via maas-postgres chart
+    dbConfig:
+      secretName: maas-db-config
+```
+
+For **production** clusters with day2-managed PostgreSQL, disable the in-cluster deployment and point MaaS at your external database:
+
+```yaml
+maas:
+  postgres:
+    deploy:
+      enabled: false
+    dbConfig:
+      secretName: maas-db-config
+      # Option A: secret already provisioned outside this repo (recommended)
+      existingSecret: maas-db-config
+      # Option B: chart creates maas-db-config from a credentials secret + endpoints
+      # credentialsSecret: maas-postgres-credentials
+      # host: postgres.production.example.com
+      # port: 5432
+      # database: maas
+      # user: maas
+      # passwordKey: password
+      # sslmode: require
+```
+
+When `deploy.enabled` is `true`, the chart deploys a single-replica PostgreSQL instance and a Job that builds `maas-db-config` from the bundled credentials. When `deploy.enabled` is `false` and `existingSecret` is set, the chart does not deploy PostgreSQL or run the Job — day2 operations own the secret. When `deploy.enabled` is `false` and `credentialsSecret` (or host/user) is set, the Job creates `maas-db-config` from the external connection details.
 
 ### Workload charts
 
@@ -271,8 +307,8 @@ All imperative steps from the upstream `bootstrap.sh` workflow are encoded in th
 | Authorino TLS spec | `rhcl` | `authorino.yaml` |
 | Restart kuadrant-operator-controller | `rhcl` | Job `restart-kuadrant-operator` |
 | OdhDashboardConfig (MaaS dashboard flags) | `openshift-ai` | `odhdashboardconfig.yaml` |
-| Postgres deployment | `maas-postgres` | `postgres.yaml` |
-| `maas-db-config` secret + maas-api restart | `maas-postgres` | Job `create-maas-db-config` |
+| Postgres deployment (optional) | `maas-postgres` | `postgres.yaml` when `maas.postgres.deploy.enabled` |
+| `maas-db-config` secret + maas-api restart | `maas-postgres` | Job `create-maas-db-config` (skipped when `existingSecret` is set) |
 | MaaS Kuadrant policies | `maas-controller` | Policy templates |
 | Simulated LLM models | `llmisvc` | Multi-model templates |
 | MaaS subscriptions | `maas-subscriptions` | Subscription templates |

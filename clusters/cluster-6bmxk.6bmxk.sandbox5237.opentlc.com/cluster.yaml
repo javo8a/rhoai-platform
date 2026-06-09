@@ -13,3 +13,10 @@ disconnected:
   gatewayConfig:
     wasmInsecureRegistries: registry.redhat.io
     serviceType: ClusterIP
+
+maas:
+  postgres:
+    deploy:
+      enabled: true
+    dbConfig:
+      secretName: maas-db-config
